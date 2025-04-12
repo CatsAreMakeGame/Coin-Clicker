@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coin Clicker! Events!</title>
+    <!-- Import Fredoka One font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+
+    <style>
+        /* Root variables and general styles */
+        :root {
+            --silver: #c0c0c0; --silver-dark: #a9a9a9; --silver-text: #555;
+            --gold: #ffd700; --gold-dark: #daa520; --gold-text: #8b4513;
+            --rainbow-1: #ff0000; --rainbow-2: #ffa500; --rainbow-3: #ffff00;
+            --rainbow-4: #00ff00; --rainbow-5: #00ffff; --rainbow-6: #0000ff;
+            --rainbow-7: #800080;
+            --diamond: #b9f2ff; --diamond-dark: #86d4e3; --diamond-sparkle: #ffffff; --diamond-text: #005f6b;
+            --ui-bg: #fff; --ui-border: #ddd; --ui-text: #333;
+            --button-bg: #4CAF50; --button-text: white;
+            --button-disabled-bg: #ccc; --button-disabled-text: #666;
+            --clover-green: #2e8b57; --bomb-grey: #808080;
+            --bomb-red: #ff4500; --bomb-yellow: #ffd700; --bomb-orange: #ffa500;
+            --tnt-red: #dc143c;
+            --main-font: 'Fredoka One', cursive;
+            --particle-z-index: 4;
+        }
+        html, body { height: 100%; margin: 0; }
+        body { font-family: var(--main-font); display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #f0f0f0; color: var(--ui-text); flex-direction: column; overflow: hidden; position: relative; padding: 10px; box-sizing: border-box; }
+        #stats-area { display: flex; align-items: center; gap: 10px; background-color: var(--ui-bg); padding: 8px 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; border: 2px solid var(--ui-border); z-index: 10; position: relative; flex-wrap: wrap; justify-content: center; }
+
+        #stats-coin-icon {
+            width: 25px; height: 25px; /* Diameter: 25px */
+            border-radius: 50%;
+            background-color: var(--gold); border: 2px solid var(--gold-dark);
+            display: inline-flex; justify-content: center; align-items: center;
+            vertical-align: middle; margin-right: 5px;
+            box-shadow: inset 0 -2px 2px rgba(0,0,0,0.2);
+            color: var(--gold-text);
+            /* Font size based on ratio from upgrade icon (0.8em / 28px) * 25px ≈ 0.7em */
+            font-size: 0.7em;
+            font-weight: normal; position: relative;
+        }
+        #stats-coin-icon::before { content: '$'; line-height: 1; }
+
+        #stats-text { font-size: 1.6em; font-weight: normal; color: #555; display: flex; align-items: center;}
+        #open-upgrades-btn { font-size: 1.4em; padding: 6px 10px; cursor: pointer; background-color: #e0e0e0; border: 1px solid #ccc; border-radius: 5px; transition: background-color 0.2s; font-family: sans-serif; }
+        #open-upgrades-btn:hover { background-color: #d0d0d0; }
+
+        /* Game Area Responsiveness & Particle Clipping */
+        #game-area {
+            width: 90vw; max-width: 500px; height: auto; aspect-ratio: 5 / 4;
+            background-color: #e0e0e0; border: 3px dashed #ccc;
+            border-radius: 10px; position: relative; cursor: crosshair;
+            /* *** ADDED: Clip particles *** */
+            overflow: hidden;
+        }
+
+        /* Coin styles and animations */
+        #coin {
+            width: 60px; height: 60px; /* Diameter: 60px */
+            border-radius: 50%; position: absolute; cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2), inset 0 -3px 5px rgba(0,0,0,0.3);
+            transition: left 0.3s ease-in-out, top 0.3s ease-in-out, transform 0.2s ease, box-shadow 0.2s ease;
+            display: flex; justify-content: center; align-items: center;
+            font-weight: normal;
+            /* Font size based on ratio from upgrade icon (0.8em / 28px) * 60px ≈ 1.7em */
+            font-size: 1.7em;
+            user-select: none; -webkit-user-drag: none; z-index: 5;
+            background-color: var(--silver); border: 3px solid var(--silver-dark); color: var(--silver-text);
+        }
+        #coin:active { transform: scale(0.92); box-shadow: 0 2px 4px rgba(0,0,0,0.2), inset 0 -2px 3px rgba(0,0,0,0.3); }
+        #coin.gold { background-color: var(--gold); border-color: var(--gold-dark); color: var(--gold-text); animation: none; }
+        #coin.rainbow { background: linear-gradient(45deg, var(--rainbow-1), var(--rainbow-2), var(--rainbow-3), var(--rainbow-4), var(--rainbow-5), var(--rainbow-6), var(--rainbow-7)); border: 3px solid white; color: white; text-shadow: 1px 1px 2px black; animation: rainbow-pulse 1s infinite alternate; }
+        @keyframes rainbow-pulse { from { box-shadow: 0 0 12px #fff, 0 0 18px var(--rainbow-2), 0 0 25px var(--rainbow-6), inset 0 -3px 5px rgba(0,0,0,0.3); } to { box-shadow: 0 0 18px #fff, 0 0 25px var(--rainbow-4), 0 0 30px var(--rainbow-1), inset 0 -3px 5px rgba(0,0,0,0.3); } }
+        #coin.diamond { background: radial-gradient(ellipse at center, var(--diamond-sparkle) 0%, var(--diamond) 60%); border: 3px solid var(--diamond-dark); color: var(--diamond-text); box-shadow: 0 4px 8px rgba(0,0,0,0.1), inset 0 -3px 5px rgba(255,255,255,0.5), 0 0 10px rgba(185, 242, 255, 0.8); animation: diamond-sparkle 2s infinite ease-in-out; /* Font size already set on #coin */ }
+        @keyframes diamond-sparkle { 0%, 100% { box-shadow: 0 4px 8px rgba(0,0,0,0.1), inset 0 -3px 5px rgba(255,255,255,0.5), 0 0 10px rgba(185, 242, 255, 0.8); } 50% { box-shadow: 0 4px 12px rgba(0,0,0,0.15), inset 0 -3px 5px rgba(255,255,255,0.7), 0 0 20px rgba(185, 242, 255, 1); } }
+
+        /* Particle styles */
+        .confetti-particle, .explosion-particle, .clover-bonus-particle {
+            position: absolute; pointer-events: none;
+            z-index: var(--particle-z-index); /* Behind clickables */
+        }
+        .confetti-particle { width: 8px; height: 12px; border-radius: 2px; opacity: 1; animation: explode-fade 1.2s ease-out forwards; }
+        .explosion-particle { width: 10px; height: 15px; border-radius: 3px; opacity: 1; animation: bomb-explode 1.0s ease-out forwards; }
+        .clover-bonus-particle { width: 5px; height: 8px; border-radius: 50% 50% 0 0 / 100% 100% 0 0; opacity: 0.9; animation: clover-drift-fade 0.7s ease-out forwards; }
+        @keyframes explode-fade { 0% { opacity: 1; transform: translate(0, 0) scale(1) rotateZ(var(--initialRotate)); } 100% { opacity: 0; transform: translate(var(--finalX), var(--finalY)) scale(0.3) rotateZ(var(--finalRotate)); } }
+        @keyframes bomb-explode { 0% { opacity: 1; transform: translate(0, 0) scale(1.2) rotateZ(var(--initialRotate)); } 100% { opacity: 0; transform: translate(var(--finalX), var(--finalY)) scale(0.1) rotateZ(var(--finalRotate)); } }
+        @keyframes clover-drift-fade { 0% { opacity: 0.9; transform: translate(0, 0) scale(1); } 100% { opacity: 0; transform: translate(var(--finalX), var(--finalY)) scale(0.4); } }
+
+        /* Upgrades menu styles */
+        #upgrades-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); display: none; justify-content: center; align-items: center; z-index: 1000; padding: 10px; box-sizing: border-box;}
+        #upgrades-menu { background-color: var(--ui-bg); padding: 25px; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.3); min-width: 280px; max-width: 95%; width: auto; position: relative; font-family: var(--main-font);}
+        #upgrades-menu h2 { margin-top: 0; margin-bottom: 20px; text-align: center; color: #444; font-weight: normal;}
+        .upgrade-item { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding: 8px; border: 1px solid #eee; border-radius: 5px; }
+        .upgrade-info { display: flex; align-items: center; flex-grow: 1; margin-right: 10px; }
+
+        .upgrade-icon {
+            width: 28px; height: 28px; /* Diameter: 28px */
+            border-radius: 50%; margin-right: 10px; flex-shrink: 0;
+            box-shadow: inset 0 -2px 3px rgba(0,0,0,0.2); position: relative;
+            display: inline-flex; justify-content: center; align-items: center;
+            /* Base font size for upgrade icons (target ratio) */
+            font-size: 0.8em;
+            font-weight: normal;
+        }
+        .upgrade-icon::before { content: '$'; line-height: 1; }
+        .upgrade-icon.gold { background-color: var(--gold); border: 2px solid var(--gold-dark); color: var(--gold-text); }
+        .upgrade-icon.diamond { background: radial-gradient(ellipse at center, var(--diamond-sparkle) 0%, var(--diamond) 70%); border: 2px solid var(--diamond-dark); color: var(--diamond-text); }
+        .upgrade-icon.rainbow { background: linear-gradient(45deg, var(--rainbow-1), var(--rainbow-3), var(--rainbow-5), var(--rainbow-7)); border: 2px solid white; animation: upgrade-rainbow-pulse 1.5s infinite alternate; color: white; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
+        @keyframes upgrade-rainbow-pulse { from { box-shadow: 0 0 5px #fff, 0 0 8px var(--rainbow-2), 0 0 12px var(--rainbow-6), inset 0 -2px 3px rgba(0,0,0,0.2); } to { box-shadow: 0 0 8px #fff, 0 0 12px var(--rainbow-4), 0 0 15px var(--rainbow-1), inset 0 -2px 3px rgba(0,0,0,0.2); } }
+
+        .upgrade-text span { display: block; font-weight: normal;}
+        .upgrade-desc { font-size: 0.9em; color: #555; }
+        .upgrade-cost { font-size: 0.85em; color: var(--gold-dark); margin-top: 3px;}
+        .upgrade-buy-btn { padding: 6px 12px; font-size: 0.85em; cursor: pointer; border: none; border-radius: 5px; background-color: var(--button-bg); color: var(--button-text); transition: background-color 0.2s; flex-shrink: 0; font-family: var(--main-font); font-weight: normal;}
+        .upgrade-buy-btn:hover:not(:disabled) { background-color: #367c39; }
+        .upgrade-buy-btn:disabled { background-color: var(--button-disabled-bg); color: var(--button-disabled-text); cursor: not-allowed; }
+        .upgrade-buy-btn.owned { background-color: #a0a0a0; color: #fff; cursor: default; }
+        #close-upgrades-btn { position: absolute; top: 8px; right: 15px; font-size: 1.8em; line-height: 1; background: none; border: none; cursor: pointer; color: #999; padding: 5px 8px; font-family: sans-serif; transition: color 0.2s ease; }
+        #close-upgrades-btn:hover { color: #333; }
+
+        /* Game object styles */
+        .game-object { position: absolute; display: none; cursor: pointer; user-select: none; -webkit-user-drag: none; z-index: 6; font-size: 3.5em; filter: drop-shadow(2px 2px 3px rgba(0,0,0,0.4)); transition: opacity 0.3s ease; }
+        #clover {}
+        #bomb { animation: bomb-tick 0.7s infinite ease-in-out alternate; }
+        @keyframes bomb-tick { from { transform: scale(1); } to { transform: scale(1.08); } }
+        #tnt { animation: tnt-tick 0.5s infinite ease-in-out alternate; }
+        @keyframes tnt-tick { from { transform: scale(1); } to { transform: scale(1.05); } }
+    </style>
+</head>
+<body>
+
+    <div id="stats-area">
+        <span id="stats-text"><span id="stats-coin-icon"></span>Coins:&nbsp;<span id="score">0</span></span>
+        <button id="open-upgrades-btn" title="Open Upgrades">⚙️</button>
+    </div>
+
+    <div id="game-area">
+        <div id="coin" class="silver">$</div>
+        <div id="clover" class="game-object">🍀</div>
+        <div id="bomb" class="game-object">💣</div>
+        <div id="tnt" class="game-object">🧨</div>
+    </div>
+
+    <div id="upgrades-overlay">
+        <div id="upgrades-menu">
+             <button id="close-upgrades-btn" title="Close">✖</button>
+             <h2>Upgrades</h2>
+             <div class="upgrade-item" data-upgrade-id="gold"> <div class="upgrade-info"><div class="upgrade-icon gold"></div><div class="upgrade-text"><span class="upgrade-desc">Unlock Gold Coins (+3 Coins, every 5)</span><span class="upgrade-cost">Cost: 25 Coins</span></div></div><button class="upgrade-buy-btn" data-upgrade-id="gold">Buy</button> </div>
+             <div class="upgrade-item" data-upgrade-id="rainbow"> <div class="upgrade-info"><div class="upgrade-icon rainbow"></div><div class="upgrade-text"><span class="upgrade-desc">Unlock Rainbow Coins (+5 Coins, every 10)</span><span class="upgrade-cost">Cost: 75 Coins</span></div></div><button class="upgrade-buy-btn" data-upgrade-id="rainbow">Buy</button> </div>
+             <div class="upgrade-item" data-upgrade-id="diamond"> <div class="upgrade-info"><div class="upgrade-icon diamond"></div><div class="upgrade-text"><span class="upgrade-desc">Unlock Diamond Coins (+10 Coins, every 20)</span><span class="upgrade-cost">Cost: 150 Coins</span></div></div><button class="upgrade-buy-btn" data-upgrade-id="diamond">Buy</button> </div>
+         </div>
+     </div>
+
+
+    <script>
+        // DOM Elements, Game State, Upgrade State
+        const coinElement = document.getElementById('coin');
+        const gameAreaElement = document.getElementById('game-area');
+        const scoreElement = document.getElementById('score');
+        const bodyElement = document.body; // Still needed? Particles are in gameArea now. Keep for now.
+        const openUpgradesBtn = document.getElementById('open-upgrades-btn');
+        const closeUpgradesBtn = document.getElementById('close-upgrades-btn');
+        const upgradesOverlay = document.getElementById('upgrades-overlay');
+        const upgradesMenu = document.getElementById('upgrades-menu');
+        const cloverElement = document.getElementById('clover');
+        const bombElement = document.getElementById('bomb');
+        const tntElement = document.getElementById('tnt');
+
+        let score = 0;
+        let clickCounter = 0;
+        const clicksForGold = 5; const clicksForRainbow = 10; const clicksForDiamond = 20;
+        let hasGoldUpgrade = false; let hasRainbowUpgrade = false; let hasDiamondUpgrade = false;
+        const upgradeCosts = { gold: 25, rainbow: 75, diamond: 150 };
+
+        let isCloverActive = false; let cloverTimeoutId = null; let cloverDespawnTime = 10000;
+        let nextCoinIsCloverBonus = false; let addCloverEffectToNextCoin = false; let cloverEffectIntervalId = null;
+
+        let isBombActive = false; let bombTimeoutId = null; let bombFuseTime = 3000; const bombSpawnFrequency = 25;
+        let isTntActive = false; let tntTimeoutId = null; let tntFuseTime = 3000; const tntSpawnFrequency = 10;
+
+        // Confetti Colors
+        const silverColors = ['#c0c0c0', '#d3d3d3', '#e0e0e0', '#b0b0b0'];
+        const goldColors = ['#ffd700', '#ffec8b', '#ffcc00', '#f0e68c', '#daa520'];
+        const rainbowColors = ['#ff0000', '#ffa500', '#ffff00', '#00ff00', '#00ffff', '#0000ff', '#800080'];
+        const diamondColors = ['#ffffff', '#b9f2ff', '#e0f7fa', '#afeeee', '#add8e6'];
+        const cloverCollectColors = ['#90ee90', '#32cd32', '#2e8b57', '#8fbc8f', '#ffffff'];
+        const cloverMissColors = ['#90ee90', '#32cd32', '#2e8b57', '#8fbc8f'];
+        const bombDefuseColors = ['#696969', '#808080', '#777777', '#555555', '#a9a9a9'];
+        const bombExplodeColors = ['#ff4500', '#ffa500', '#ffd700', '#dc143c', '#ff6347', '#808080', '#696969'];
+        const tntExplodeColors = ['#dc143c', '#ff4500', '#ffa500', '#ffd700', '#808080', '#696969'];
+        const cloverBonusParticleColors = ['#2e8b57', '#3cb371', '#90ee90'];
+
+
+        // --- Functions ---
+
+        // *** MODIFIED: createConfetti appends to gameArea, calculates relative position ***
+        function createConfetti(originX, originY, colors, particleClass = 'confetti-particle', particleWidth = 8, particleHeight = 12, particleCount = 25) {
+             const gameAreaRect = gameAreaElement.getBoundingClientRect(); // Get game area position
+             const baseVelocity = particleClass === 'explosion-particle' ? 150 : 100; const spread = 1.5;
+
+             for (let i = 0; i < particleCount; i++) {
+                 const particle = document.createElement('div'); particle.classList.add(particleClass); particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                 const angle = Math.random() * Math.PI * 2; const velocity = baseVelocity * (1 + (Math.random() - 0.5) * spread); const initialRotate = (Math.random() - 0.5) * 720;
+                 const expansionFactor = particleClass === 'explosion-particle' ? 1.3 + Math.random() * 0.4 : 1.5 + Math.random() * 0.5;
+                 const finalX = Math.cos(angle) * velocity * expansionFactor; const finalY = Math.sin(angle) * velocity * expansionFactor;
+                 const finalRotate = initialRotate + (Math.random() - 0.5) * (particleClass === 'explosion-particle' ? 180 : 360);
+                 const particleSizeOffsetX = particleWidth / 2; const particleSizeOffsetY = particleHeight / 2;
+
+                 // Calculate position relative to gameArea's top-left corner
+                 const relativeX = originX - gameAreaRect.left - particleSizeOffsetX;
+                 const relativeY = originY - gameAreaRect.top - particleSizeOffsetY;
+
+                 particle.style.left = `${relativeX}px`; particle.style.top = `${relativeY}px`;
+                 particle.style.setProperty('--initialRotate', `${initialRotate}deg`); particle.style.setProperty('--finalX', `${finalX}px`); particle.style.setProperty('--finalY', `${finalY}px`); particle.style.setProperty('--finalRotate', `${finalRotate}deg`);
+
+                 gameAreaElement.appendChild(particle); // Append to gameArea
+                 particle.addEventListener('animationend', () => { particle.remove(); });
+             }
+         }
+
+         // *** MODIFIED: createCloverBonusEffect appends to gameArea, calculates relative position ***
+         function createCloverBonusEffect(targetElement) {
+            if (!targetElement || targetElement.style.visibility === 'hidden' || targetElement.style.display === 'none') { stopCloverEffect(); return; }
+            const gameAreaRect = gameAreaElement.getBoundingClientRect(); // Get game area position
+            const particleCount = 5; const particleWidth = 5; const particleHeight = 8; const rect = targetElement.getBoundingClientRect();
+            const coinCenterX = rect.left + rect.width / 2; const coinCenterY = rect.top + rect.height / 2; const spawnRadius = rect.width * 0.65;
+
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div'); particle.classList.add('clover-bonus-particle'); particle.style.backgroundColor = cloverBonusParticleColors[Math.floor(Math.random() * cloverBonusParticleColors.length)];
+                const angle = Math.random() * Math.PI * 2;
+                const spawnX = coinCenterX + Math.cos(angle) * spawnRadius; const spawnY = coinCenterY + Math.sin(angle) * spawnRadius;
+                const driftAngle = angle; const driftDistance = 12 + Math.random() * 8;
+                const finalX = Math.cos(driftAngle) * driftDistance; const finalY = Math.sin(driftAngle) * driftDistance;
+                const particleSizeOffsetX = particleWidth / 2; const particleSizeOffsetY = particleHeight / 2;
+
+                // Calculate position relative to gameArea's top-left corner
+                const relativeX = spawnX - gameAreaRect.left - particleSizeOffsetX;
+                const relativeY = spawnY - gameAreaRect.top - particleSizeOffsetY;
+
+                particle.style.left = `${relativeX}px`; particle.style.top = `${relativeY}px`;
+                particle.style.setProperty('--finalX', `${finalX}px`); particle.style.setProperty('--finalY', `${finalY}px`);
+
+                gameAreaElement.appendChild(particle); // Append to gameArea
+                particle.addEventListener('animationend', () => { particle.remove(); });
+            }
+        }
+
+        // stopCloverEffect
+        function stopCloverEffect() { if (cloverEffectIntervalId) { clearInterval(cloverEffectIntervalId); cloverEffectIntervalId = null; } }
+
+        // positionGameObject
+         function positionGameObject(element) { const gameAreaRect = gameAreaElement.getBoundingClientRect(); const objectRect = element.getBoundingClientRect(); const coinRect = coinElement.getBoundingClientRect(); let randomX, randomY, attempts = 0; const maxAttempts = 10; const objWidth = objectRect.width || 50; const objHeight = objectRect.height || 50; do { randomX = Math.max(0, Math.random() * (gameAreaRect.width - objWidth)); randomY = Math.max(0, Math.random() * (gameAreaRect.height - objHeight)); attempts++; } while ( attempts < maxAttempts && Math.abs((randomX + objWidth / 2) - (coinRect.left - gameAreaRect.left + coinRect.width / 2)) < coinRect.width * 1.2 && Math.abs((randomY + objHeight / 2) - (coinRect.top - gameAreaRect.top + coinRect.height / 2)) < coinRect.height * 1.2 ); element.style.left = `${randomX}px`; element.style.top = `${randomY}px`; element.style.display = 'block'; element.style.opacity = 1; }
+
+
+        // --- Core Game Logic ---
+        function updateScoreDisplay() { scoreElement.textContent = score; }
+        function moveCoin() { coinElement.style.visibility = 'visible'; const gameAreaRect = gameAreaElement.getBoundingClientRect(); const coinRect = coinElement.getBoundingClientRect(); const maxX = gameAreaRect.width - coinRect.width; const maxY = gameAreaRect.height - coinRect.height; const randomX = Math.max(0, Math.random() * maxX); const randomY = Math.max(0, Math.random() * maxY); coinElement.style.left = `${randomX}px`; coinElement.style.top = `${randomY}px`; }
+
+        // updateCoinAppearance (sets text to '$')
+        function updateCoinAppearance() { let nextType = 'silver'; let nextText = '$'; const nextClickNumber = clickCounter + 1; addCloverEffectToNextCoin = false; if (nextCoinIsCloverBonus) { nextCoinIsCloverBonus = false; addCloverEffectToNextCoin = true; const luckyRoll = Math.random(); if (hasDiamondUpgrade) { if (luckyRoll < 0.10) { nextType = 'diamond'; } else if (luckyRoll < 0.35) { nextType = 'rainbow'; } else { nextType = 'gold'; } } else if (hasRainbowUpgrade) { if (luckyRoll < 0.30) { nextType = 'rainbow'; } else { nextType = 'gold'; } } else if (hasGoldUpgrade) { nextType = 'gold'; } else { nextType = 'silver'; addCloverEffectToNextCoin = false; } } else { if (hasDiamondUpgrade && nextClickNumber > 0 && nextClickNumber % clicksForDiamond === 0) { nextType = 'diamond'; } else if (hasRainbowUpgrade && nextClickNumber > 0 && nextClickNumber % clicksForRainbow === 0) { nextType = 'rainbow'; } else if (hasGoldUpgrade && nextClickNumber > 0 && nextClickNumber % clicksForGold === 0) { nextType = 'gold'; } } coinElement.classList.remove('silver', 'gold', 'rainbow', 'diamond'); coinElement.classList.add(nextType); coinElement.textContent = nextText; }
+
+         // handleCoinClick
+        function handleCoinClick(event) {
+            stopCloverEffect(); if (coinElement.style.visibility === 'hidden') return;
+            let scoreIncrease = 0; let currentConfettiColors = silverColors;
+            const coinRect = coinElement.getBoundingClientRect();
+            const coinCenterX = coinRect.left + coinRect.width / 2; const coinCenterY = coinRect.top + coinRect.height / 2;
+            if (coinElement.classList.contains('diamond')) { scoreIncrease = 10; currentConfettiColors = diamondColors; }
+            else if (coinElement.classList.contains('rainbow')) { scoreIncrease = 5; currentConfettiColors = rainbowColors; }
+            else if (coinElement.classList.contains('gold')) { scoreIncrease = 3; currentConfettiColors = goldColors; }
+            else { scoreIncrease = 1; currentConfettiColors = silverColors; }
+            score += scoreIncrease; updateScoreDisplay();
+            createConfetti(coinCenterX, coinCenterY, currentConfettiColors, 'confetti-particle', 8, 12);
+            clickCounter++; updateCoinAppearance(); moveCoin();
+            if (addCloverEffectToNextCoin) { cloverEffectIntervalId = setInterval(() => { if (coinElement.style.visibility !== 'hidden' && coinElement.style.display !== 'none') { createCloverBonusEffect(coinElement); } else { stopCloverEffect(); } }, 200); addCloverEffectToNextCoin = false; }
+            if (!isTntActive && !isBombActive && clickCounter > 0 && clickCounter % tntSpawnFrequency === 0) { spawnTnt(); }
+            else if (!isBombActive && !isTntActive && clickCounter > 0 && clickCounter % bombSpawnFrequency === 0) { spawnBomb(); }
+            if (upgradesOverlay.style.display === 'flex') { renderUpgradesMenu(); }
+         }
+
+
+        // --- Event Object Logic ---
+        // spawnClover
+        function spawnClover() { if (!hasGoldUpgrade && !hasRainbowUpgrade) return; if (isCloverActive || isBombActive || isTntActive) return; isCloverActive = true; positionGameObject(cloverElement); clearTimeout(cloverTimeoutId); cloverTimeoutId = setTimeout(() => { if (isCloverActive) { const cloverRect = cloverElement.getBoundingClientRect(); createConfetti(cloverRect.left + cloverRect.width / 2, cloverRect.top + cloverRect.height / 2, cloverMissColors); cloverElement.style.display = 'none'; isCloverActive = false; } }, cloverDespawnTime); }
+        // handleCloverClick
+        function handleCloverClick(event) { if (!isCloverActive) return; nextCoinIsCloverBonus = true; isCloverActive = false; clearTimeout(cloverTimeoutId); const cloverRect = cloverElement.getBoundingClientRect(); const cloverCenterX = cloverRect.left + cloverRect.width / 2; const cloverCenterY = cloverRect.top + cloverRect.height / 2; cloverElement.style.display = 'none'; createConfetti(cloverCenterX, cloverCenterY, cloverCollectColors); }
+
+        // --- Bomb Logic ---
+        // spawnBomb
+        function spawnBomb() { if (isBombActive || isTntActive || isCloverActive) return; stopCloverEffect(); clearTimeout(bombTimeoutId); bombTimeoutId = null; isBombActive = true; positionGameObject(bombElement); bombTimeoutId = setTimeout(() => { if (isBombActive) { explodeBomb(); } }, bombFuseTime); }
+        // handleBombClick
+        function handleBombClick(event) { if (!isBombActive) return; isBombActive = false; const bombRect = bombElement.getBoundingClientRect(); const bombCenterX = bombRect.left + bombRect.width / 2; const bombCenterY = bombRect.top + bombRect.height / 2; bombElement.style.display = 'none'; clearTimeout(bombTimeoutId); bombTimeoutId = null; createConfetti(bombCenterX, bombCenterY, bombDefuseColors, 'confetti-particle', 8, 12); }
+        // explodeBomb
+        function explodeBomb() { if (!isBombActive) return; isBombActive = false; bombElement.style.display = 'none'; bombTimeoutId = null; stopCloverEffect(); score = Math.max(0, score - 10); updateScoreDisplay(); coinElement.style.visibility = 'hidden'; const gameAreaRect = gameAreaElement.getBoundingClientRect(); createConfetti(gameAreaRect.left + gameAreaRect.width / 2, gameAreaRect.top + gameAreaRect.height / 2, bombExplodeColors, 'explosion-particle', 10, 15, 40); setTimeout(() => { if (coinElement.style.visibility === 'hidden') { updateCoinAppearance(); moveCoin(); } }, 800); }
+
+         // --- TNT Logic ---
+         // spawnTnt
+         function spawnTnt() { if (isTntActive || isBombActive || isCloverActive) return; stopCloverEffect(); clearTimeout(tntTimeoutId); tntTimeoutId = null; isTntActive = true; positionGameObject(tntElement); tntTimeoutId = setTimeout(() => { if (isTntActive) { explodeTnt(); } }, tntFuseTime); }
+         // handleTntClick
+         function handleTntClick(event) { if (!isTntActive) return; isTntActive = false; const tntRect = tntElement.getBoundingClientRect(); const tntCenterX = tntRect.left + tntRect.width / 2; const tntCenterY = tntRect.top + tntRect.height / 2; tntElement.style.display = 'none'; clearTimeout(tntTimeoutId); tntTimeoutId = null; createConfetti(tntCenterX, tntCenterY, bombDefuseColors, 'confetti-particle', 8, 12); }
+         // explodeTnt
+         function explodeTnt() { if (!isTntActive) return; isTntActive = false; tntElement.style.display = 'none'; tntTimeoutId = null; stopCloverEffect(); score = Math.max(0, score - 5); updateScoreDisplay(); coinElement.style.visibility = 'hidden'; const gameAreaRect = gameAreaElement.getBoundingClientRect(); createConfetti(gameAreaRect.left + gameAreaRect.width / 2, gameAreaRect.top + gameAreaRect.height / 2, tntExplodeColors, 'explosion-particle', 9, 13, 30); setTimeout(() => { if (coinElement.style.visibility === 'hidden') { updateCoinAppearance(); moveCoin(); } }, 700); }
+
+
+        // --- Upgrade Menu Logic ---
+        function renderUpgradesMenu() { const goldBuyBtn = document.querySelector('.upgrade-buy-btn[data-upgrade-id="gold"]'); const goldItem = goldBuyBtn.closest('.upgrade-item'); const rainbowBuyBtn = document.querySelector('.upgrade-buy-btn[data-upgrade-id="rainbow"]'); const rainbowItem = rainbowBuyBtn.closest('.upgrade-item'); const diamondBuyBtn = document.querySelector('.upgrade-buy-btn[data-upgrade-id="diamond"]'); const diamondItem = diamondBuyBtn.closest('.upgrade-item'); if (hasGoldUpgrade) { goldBuyBtn.textContent = 'Owned'; goldBuyBtn.disabled = true; goldBuyBtn.classList.add('owned'); goldItem.style.opacity = 0.7; } else { goldBuyBtn.textContent = 'Buy'; goldBuyBtn.disabled = score < upgradeCosts.gold; goldBuyBtn.classList.remove('owned'); goldItem.style.opacity = 1; goldBuyBtn.title = goldBuyBtn.disabled ? `Need ${upgradeCosts.gold} coins` : `Buy for ${upgradeCosts.gold} coins`; } if (hasRainbowUpgrade) { rainbowBuyBtn.textContent = 'Owned'; rainbowBuyBtn.disabled = true; rainbowBuyBtn.classList.add('owned'); rainbowItem.style.opacity = 0.7; } else { rainbowBuyBtn.textContent = 'Buy'; rainbowBuyBtn.disabled = !hasGoldUpgrade || score < upgradeCosts.rainbow; rainbowBuyBtn.classList.remove('owned'); rainbowItem.style.opacity = hasGoldUpgrade ? 1 : 0.5; if (!hasGoldUpgrade) { rainbowBuyBtn.title = "Requires Gold upgrade"; } else if (score < upgradeCosts.rainbow) { rainbowBuyBtn.title = `Need ${upgradeCosts.rainbow} coins`; } else { rainbowBuyBtn.title = `Buy for ${upgradeCosts.rainbow} coins`; } } if (hasDiamondUpgrade) { diamondBuyBtn.textContent = 'Owned'; diamondBuyBtn.disabled = true; diamondBuyBtn.classList.add('owned'); diamondItem.style.opacity = 0.7; } else { diamondBuyBtn.textContent = 'Buy'; diamondBuyBtn.disabled = !hasRainbowUpgrade || score < upgradeCosts.diamond; diamondBuyBtn.classList.remove('owned'); diamondItem.style.opacity = hasRainbowUpgrade ? 1 : 0.5; if (!hasRainbowUpgrade) { diamondBuyBtn.title = "Requires Rainbow upgrade"; } else if (score < upgradeCosts.diamond) { diamondBuyBtn.title = `Need ${upgradeCosts.diamond} coins`; } else { diamondBuyBtn.title = `Buy for ${upgradeCosts.diamond} coins`; } } }
+        function handleBuyUpgrade(event) { if (!event.target.classList.contains('upgrade-buy-btn') || event.target.disabled) return; const upgradeId = event.target.dataset.upgradeId; const cost = upgradeCosts[upgradeId]; if (score >= cost) { let prerequisiteMet = true; if (upgradeId === 'rainbow' && !hasGoldUpgrade) prerequisiteMet = false; if (upgradeId === 'diamond' && !hasRainbowUpgrade) prerequisiteMet = false; if (prerequisiteMet) { score -= cost; updateScoreDisplay(); if (upgradeId === 'gold') hasGoldUpgrade = true; else if (upgradeId === 'rainbow') hasRainbowUpgrade = true; else if (upgradeId === 'diamond') hasDiamondUpgrade = true; renderUpgradesMenu(); updateCoinAppearance(); } } }
+        function showUpgradesMenu() { renderUpgradesMenu(); upgradesOverlay.style.display = 'flex'; }
+        function hideUpgradesMenu() { upgradesOverlay.style.display = 'none'; }
+
+
+        // --- Event Listeners ---
+        coinElement.addEventListener('click', handleCoinClick);
+        cloverElement.addEventListener('click', handleCloverClick);
+        bombElement.addEventListener('click', handleBombClick);
+        tntElement.addEventListener('click', handleTntClick);
+        openUpgradesBtn.addEventListener('click', showUpgradesMenu);
+        closeUpgradesBtn.addEventListener('click', hideUpgradesMenu);
+        upgradesOverlay.addEventListener('click', (event) => { if (event.target === upgradesOverlay) hideUpgradesMenu(); });
+        upgradesMenu.addEventListener('click', handleBuyUpgrade);
+
+
+        // --- Initialization ---
+        updateScoreDisplay(); updateCoinAppearance(); moveCoin();
+        setInterval(spawnClover, 60000);
+        cloverElement.style.display = 'none'; bombElement.style.display = 'none'; tntElement.style.display = 'none';
+
+    </script>
+
+</body>
+</html>
