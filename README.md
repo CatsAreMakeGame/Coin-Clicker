@@ -1,5 +1,5 @@
-# Coin-Clicker
-Click coins, collect them, and have fun in this simple and satisfying coin clicker game!
+# Atral-Relic-RNG
+Try your luck in Astral Relic RNG!
 
 ## License
 This project is licensed under the MIT License.  
