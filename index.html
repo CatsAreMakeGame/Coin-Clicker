@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Astral Relic Roller</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <style>
+        body {
+            font-family: 'Orbitron', sans-serif;
+            background: #000010 url('https://www.transparenttextures.com/patterns/stardust.png');
+            color: #E0E0E0; /* Light grey for general text */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start; /* Align to top for inventory scroll */
+            min-height: 100vh;
+            margin: 0;
+            padding-top: 20px; /* Add some padding at the top */
+            overflow-x: hidden; /* Prevent horizontal scroll */
+        }
+
+        #gameTitle {
+            font-family: 'Press+Start+2P', cursive;
+            font-size: clamp(28px, 7vw, 48px);
+            color: #FFD700; /* Gold */
+            text-shadow: 0 0 10px #FFD700, 0 0 20px #FFA500, 0 0 5px #000;
+            margin-bottom: 20px;
+        }
+
+        #mainContainer {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 95vw;
+            max-width: 800px; /* Max width for the main game area */
+        }
+        
+        #rollSection {
+            background: rgba(10, 20, 60, 0.85);
+            border: 2px solid #00ffff;
+            border-radius: 20px;
+            box-shadow: 0 0 25px #00ffff, inset 0 0 20px rgba(0, 255, 255, 0.3);
+            padding: clamp(20px, 4vw, 30px);
+            width: 100%;
+            max-width: 500px; /* Max width for roll section */
+            text-align: center;
+            margin-bottom: 30px;
+            position: relative; /* For particle canvas */
+        }
+        
+        #particleCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* So it doesn't block clicks */
+            z-index: 1;
+        }
+
+        .roll-button {
+            font-family: 'Press Start 2P', cursive;
+            background: linear-gradient(145deg, #FFD700, #FFA500); /* Gold gradient */
+            color: #2c1e00; /* Dark brown text */
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: clamp(16px, 4vw, 22px);
+            cursor: pointer;
+            transition: all 0.2s ease-out;
+            box-shadow: 0 5px #b8860b, 0 0 15px #FFD700;
+            text-shadow: 1px 1px 1px rgba(255,255,255,0.3);
+            margin-top: 10px;
+            position: relative; /* For z-index above particles */
+            z-index: 2;
+        }
+
+        .roll-button:hover {
+            background: linear-gradient(145deg, #ffe766, #ffb733);
+            box-shadow: 0 7px #b8860b, 0 0 20px #ffe766;
+            transform: translateY(-3px);
+        }
+
+        .roll-button:active {
+            background: linear-gradient(145deg, #FFA500, #FFD700);
+            box-shadow: 0 3px #b8860b, 0 0 10px #FFD700;
+            transform: translateY(0px);
+        }
+        
+        .roll-button:disabled {
+            background: #555;
+            color: #999;
+            cursor: not-allowed;
+            box-shadow: 0 5px #333;
+        }
+
+        #rollResultDisplay {
+            margin-top: 25px;
+            min-height: 120px; /* Space for the result */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative; /* For z-index above particles */
+            z-index: 2;
+            padding: 10px;
+            border-radius: 10px;
+            background: rgba(0,0,0,0.2);
+        }
+        
+        .relic-name {
+            font-size: clamp(20px, 5vw, 28px);
+            font-weight: bold;
+            margin-bottom: 5px;
+            transition: all 0.3s ease;
+        }
+        .relic-rarity {
+            font-size: clamp(14px, 3.5vw, 18px);
+            font-style: italic;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+        .relic-icon {
+            font-size: clamp(40px, 10vw, 60px); /* Larger icon */
+            transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); /* Bounce effect */
+        }
+
+        /* Rarity Styles */
+        .Common { color: #CCCCCC; text-shadow: 0 0 3px #CCCCCC; }
+        .Uncommon { color: #66FF66; text-shadow: 0 0 5px #66FF66; }
+        .Rare { color: #66B2FF; text-shadow: 0 0 7px #66B2FF; }
+        .Epic { color: #CC66FF; text-shadow: 0 0 9px #CC66FF; }
+        .Legendary { color: #FFB84D; text-shadow: 0 0 12px #FFB84D, 0 0 5px #FFD700; }
+        .Mythical { color: #FF4DFF; text-shadow: 0 0 15px #FF4DFF, 0 0 7px #FF00FF; }
+        .Cosmic { /* Special animated rainbow */
+            background-image: linear-gradient(to right, violet, indigo, blue, green, yellow, orange, red);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            animation: rainbowText 3s linear infinite;
+            text-shadow: 0 0 10px rgba(255,255,255,0.7);
+        }
+
+        @keyframes rainbowText {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 100% 50%; }
+        }
+        
+        @keyframes rollSpin {
+            0% { opacity: 0; transform: translateY(20px) scale(0.8); }
+            20% { opacity: 1; transform: translateY(0px) scale(1); }
+            80% { opacity: 1; transform: translateY(0px) scale(1); }
+            100% { opacity: 0; transform: translateY(-20px) scale(0.8); }
+        }
+        .rolling-text {
+            animation: rollSpin 0.2s linear infinite;
+        }
+
+
+        #inventorySection {
+            margin-top: 20px;
+            width: 100%;
+            max-width: 700px; /* Wider for inventory */
+            background: rgba(20, 30, 70, 0.8);
+            border: 1px solid #337ab7;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 0 15px #337ab7;
+        }
+        #inventorySection h2 {
+            font-family: 'Press Start 2P', cursive;
+            font-size: clamp(18px, 4vw, 24px);
+            color: #FFD700;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        #inventoryList {
+            max-height: 300px; /* Scrollable inventory */
+            overflow-y: auto;
+            padding-right: 10px; /* For scrollbar */
+        }
+        .inventory-item {
+            background: rgba(0,0,0,0.3);
+            padding: 8px 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-left: 5px solid; /* Rarity color indicator */
+        }
+        .inventory-item-icon { font-size: 24px; margin-right: 10px; }
+        .inventory-item-name { flex-grow: 1; }
+        .inventory-item-rarity { font-style: italic; font-size: 0.9em; }
+        
+        /* Scrollbar styling */
+        #inventoryList::-webkit-scrollbar { width: 8px; }
+        #inventoryList::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px;}
+        #inventoryList::-webkit-scrollbar-thumb { background: #00ffff; border-radius: 4px;}
+        #inventoryList::-webkit-scrollbar-thumb:hover { background: #00aaaa; }
+
+        #totalRollsDisplay {
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: #aaa;
+        }
+
+    </style>
+</head>
+<body>
+    <h1 id="gameTitle">Astral Relic Roller</h1>
+
+    <div id="mainContainer">
+        <div id="rollSection">
+            <canvas id="particleCanvas"></canvas>
+            <p style="color: #ADD8E6; margin-bottom: 15px; z-index: 2; position:relative;">Click "Roll" to discover a new Astral Relic!</p>
+            
+            <div id="rollResultDisplay">
+                <span class="relic-icon">❓</span>
+                <span class="relic-name">Roll to find out!</span>
+                <span class="relic-rarity"></span>
+            </div>
+
+            <button id="rollButton" class="roll-button">Roll!</button>
+            <div id="totalRollsDisplay">Total Rolls: 0</div>
+        </div>
+
+        <div id="inventorySection">
+            <h2>Collected Relics</h2>
+            <div id="inventoryList">
+                <p style="text-align:center; color: #999;">Your collection is empty. Start rolling!</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const rollButton = document.getElementById('rollButton');
+        const rollResultDisplay = document.getElementById('rollResultDisplay');
+        const relicIconDisplay = rollResultDisplay.querySelector('.relic-icon');
+        const relicNameDisplay = rollResultDisplay.querySelector('.relic-name');
+        const relicRarityDisplay = rollResultDisplay.querySelector('.relic-rarity');
+        const inventoryList = document.getElementById('inventoryList');
+        const totalRollsDisplay = document.getElementById('totalRollsDisplay');
+        const particleCanvas = document.getElementById('particleCanvas');
+        const pCtx = particleCanvas.getContext('2d');
+
+        // --- Audio ---
+        let audioInitialized = false;
+        const rollSynth = new Tone.MembraneSynth({ pitchDecay: 0.01, octaves: 5, oscillator: { type: "sine" }, envelope: { attack: 0.001, decay: 0.2, sustain: 0.01, release: 0.1 } }).toDestination();
+        const tickSynth = new Tone.MetalSynth({ frequency: 200, envelope: { attack: 0.001, decay: 0.05, release: 0.05 }, harmonicity: 3.1, modulationIndex: 16, resonance: 1000, octaves: 0.5 }).toDestination();
+        tickSynth.volume.value = -20;
+        const raritySynths = {
+            Common: new Tone.PluckSynth({ resonance: 0.7 }).toDestination(),
+            Uncommon: new Tone.PluckSynth({ resonance: 0.8 }).toDestination(),
+            Rare: new Tone.FMSynth({ harmonicity: 1.2, modulationIndex: 7, envelope: { attack: 0.01, decay: 0.3 } }).toDestination(),
+            Epic: new Tone.AMSynth({ harmonicity: 1.5, envelope: { attack: 0.01, decay: 0.4 } }).toDestination(),
+            Legendary: new Tone.Synth({ oscillator: { type: "pwm", modulationFrequency: 0.2 }, envelope: { attack: 0.05, decay: 0.5, sustain: 0.1, release: 0.3 } }).toDestination(),
+            Mythical: new Tone.Synth({ oscillator: { type: "fatsawtooth", count: 3, spread: 30 }, envelope: { attack: 0.1, decay: 0.7, sustain: 0.2, release: 0.5 } }).toDestination(),
+            Cosmic: new Tone.Synth({ oscillator: { type: "pulse", width: 0.4 }, envelope: { attack: 0.2, decay: 1.0, sustain: 0.3, release: 0.8 } }).toDestination(),
+        };
+        Object.values(raritySynths).forEach(s => s.volume.value = -8);
+
+
+        async function initAudio() {
+            if (audioInitialized) return;
+            try {
+                await Tone.start();
+                audioInitialized = true;
+                console.log("Audio context started for Astral Relic Roller.");
+            } catch (e) {
+                console.error("Could not start audio context:", e);
+            }
+        }
+        document.body.addEventListener('click', initAudio, { once: true });
+
+
+        // --- Relic Definitions ---
+        const RELICS = [
+            // Name, Rarity, Icon, Weight (lower = rarer)
+            { name: "Star Fragment", rarity: "Common", icon: "✨", weight: 25, color: "#CCCCCC" },
+            { name: "Moon Rock", rarity: "Common", icon: "🌑", weight: 25, color: "#CCCCCC" },
+            { name: "Space Dust Bunny", rarity: "Common", icon: "🐰", weight: 20, color: "#CCCCCC" },
+
+            { name: "Nebula Wisp", rarity: "Uncommon", icon: "🌫️", weight: 15, color: "#66FF66" },
+            { name: "Comet Tail Feather", rarity: "Uncommon", icon: "☄️", weight: 15, color: "#66FF66" },
+            { name: "Alien Sprout", rarity: "Uncommon", icon: "🌱", weight: 12, color: "#66FF66" },
+
+            { name: "Asteroid Geode", rarity: "Rare", icon: "🪨", weight: 8, color: "#66B2FF" },
+            { name: "Planet Core Shard", rarity: "Rare", icon: "🪐", weight: 8, color: "#66B2FF" },
+            { name: "Cryo Crystal", rarity: "Rare", icon: "❄️", weight: 7, color: "#66B2FF" },
+
+            { name: "Pulsar Gem", rarity: "Epic", icon: "💎", weight: 4, color: "#CC66FF" },
+            { name: "Void Pearl", rarity: "Epic", icon: "🔮", weight: 4, color: "#CC66FF" },
+            { name: "Gravity Orb", rarity: "Epic", icon: "🌀", weight: 3.5, color: "#CC66FF" },
+
+            { name: "Sunstone Amulet", rarity: "Legendary", icon: "☀️", weight: 1.5, color: "#FFB84D" },
+            { name: "Black Hole Fragment", rarity: "Legendary", icon: "⚫", weight: 1.2, color: "#FFB84D" },
+            
+            { name: "Galactic Bloom", rarity: "Mythical", icon: "🌸", weight: 0.5, color: "#FF4DFF" },
+            { name: "Celestial Tear", rarity: "Mythical", icon: "💧", weight: 0.4, color: "#FF4DFF" },
+
+            { name: "Heart of the Cosmos", rarity: "Cosmic", icon: "💖", weight: 0.05, color: "rainbow" }, // Special color
+            { name: "Timeless Paradox", rarity: "Cosmic", icon: "⏳", weight: 0.04, color: "rainbow" }
+        ];
+        const totalWeight = RELICS.reduce((sum, relic) => sum + relic.weight, 0);
+
+        // --- Game State ---
+        let inventory = [];
+        let totalRolls = 0;
+
+        // --- Particle System ---
+        let particles = [];
+        function resizeParticleCanvas() {
+            particleCanvas.width = particleCanvas.parentElement.clientWidth;
+            particleCanvas.height = particleCanvas.parentElement.clientHeight;
+        }
+        window.addEventListener('resize', resizeParticleCanvas);
+        
+        class Particle {
+            constructor(x, y, color, size, speedX, speedY) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.size = Math.random() * size + 2;
+                this.speedX = speedX || (Math.random() - 0.5) * 6;
+                this.speedY = speedY || (Math.random() - 0.5) * 6 - 2; // Tend to go up slightly
+                this.life = 100; // Frames
+                this.gravity = 0.05;
+            }
+            update() {
+                this.speedY += this.gravity;
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.life -= 1.5; // Fade faster
+            }
+            draw() {
+                pCtx.fillStyle = this.color;
+                pCtx.globalAlpha = Math.max(0, this.life / 100);
+                pCtx.beginPath();
+                pCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                pCtx.fill();
+            }
+        }
+
+        function createBurst(x, y, count, color, size = 5, speedMultiplier = 1) {
+            for (let i = 0; i < count; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = (Math.random() * 3 + 2) * speedMultiplier;
+                particles.push(new Particle(
+                    x, y, color, size,
+                    Math.cos(angle) * speed, Math.sin(angle) * speed
+                ));
+            }
+        }
+
+        function particleLoop() {
+            pCtx.clearRect(0, 0, particleCanvas.width, particleCanvas.height);
+            particles = particles.filter(p => p.life > 0);
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+            requestAnimationFrame(particleLoop);
+        }
+
+
+        // --- Game Logic ---
+        function performRoll() {
+            let rand = Math.random() * totalWeight;
+            for (const relic of RELICS) {
+                if (rand < relic.weight) {
+                    return relic;
+                }
+                rand -= relic.weight;
+            }
+            return RELICS[RELICS.length - 1]; // Fallback, should not happen if weights are correct
+        }
+
+        function displayRolledItem(relic, isRollingAnimation = false) {
+            relicIconDisplay.textContent = relic.icon;
+            relicNameDisplay.textContent = relic.name;
+            relicRarityDisplay.textContent = `Rarity: ${relic.rarity}`;
+
+            // Apply rarity class for color
+            relicNameDisplay.className = `relic-name ${relic.rarity}`;
+            relicRarityDisplay.className = `relic-rarity ${relic.rarity}`;
+            relicIconDisplay.style.transform = 'scale(0.8)'; // Initial state for bounce
+
+            if (!isRollingAnimation) {
+                setTimeout(() => {
+                    relicIconDisplay.style.transform = 'scale(1.2)'; // Bounce effect part 1
+                }, 50);
+                 setTimeout(() => {
+                    relicIconDisplay.style.transform = 'scale(1)'; // Bounce effect part 2
+                }, 250);
+
+                // Play sound based on rarity
+                const raritySound = raritySynths[relic.rarity];
+                if (raritySound && audioInitialized) {
+                    let note = "C4";
+                    if (relic.rarity === "Uncommon") note = "E4";
+                    if (relic.rarity === "Rare") note = "G4";
+                    if (relic.rarity === "Epic") note = "A4";
+                    if (relic.rarity === "Legendary") note = "C5";
+                    if (relic.rarity === "Mythical") note = "E5";
+                    if (relic.rarity === "Cosmic") note = "G5";
+                    raritySound.triggerAttackRelease(note, "0.5s");
+                }
+                
+                // Particle burst for revealed item
+                const particleX = particleCanvas.width / 2;
+                const particleY = particleCanvas.height / 2;
+                let pCount = 20;
+                let pSize = 3;
+                let pSpeed = 1;
+                if (relic.rarity === "Rare") { pCount = 30; pSize = 4; }
+                if (relic.rarity === "Epic") { pCount = 40; pSize = 5; pSpeed = 1.2; }
+                if (relic.rarity === "Legendary") { pCount = 60; pSize = 6; pSpeed = 1.5; }
+                if (relic.rarity === "Mythical") { pCount = 80; pSize = 7; pSpeed = 1.8; }
+                if (relic.rarity === "Cosmic") { pCount = 120; pSize = 8; pSpeed = 2.2; }
+                
+                let pColor = relic.color;
+                if (relic.rarity === "Cosmic") { // Rainbow particles for Cosmic
+                    for(let i=0; i < pCount; i++) {
+                        const colors = ["#FF00FF", "#00FFFF", "#FFFF00", "#00FF00", "#FF0000", "#FFFFFF"];
+                        particles.push(new Particle(particleX, particleY, colors[i % colors.length], pSize, (Math.random()-0.5)*8*pSpeed, (Math.random()-0.5)*8*pSpeed - 2));
+                    }
+                } else {
+                    createBurst(particleX, particleY, pCount, pColor, pSize, pSpeed);
+                }
+
+            }
+        }
+
+        async function handleRoll() {
+            await initAudio(); // Ensure audio is ready
+            rollButton.disabled = true;
+            if (audioInitialized) rollSynth.triggerAttackRelease("C2", "0.2s");
+
+            let rollDuration = 2000; // 2 seconds
+            let tickInterval = 100;
+            let elapsed = 0;
+
+            relicNameDisplay.classList.add('rolling-text');
+            relicIconDisplay.textContent = "❓"; // Placeholder during roll
+
+            const intervalId = setInterval(() => {
+                const randomRelicForDisplay = RELICS[Math.floor(Math.random() * RELICS.length)];
+                displayRolledItem(randomRelicForDisplay, true); // Display without final effects
+                if (audioInitialized) tickSynth.triggerAttackRelease("8n", Tone.now() + 0.01);
+                elapsed += tickInterval;
+                if (elapsed >= rollDuration) {
+                    clearInterval(intervalId);
+                    const actualRolledRelic = performRoll();
+                    displayRolledItem(actualRolledRelic);
+                    addToInventory(actualRolledRelic);
+                    totalRolls++;
+                    updateTotalRollsDisplay();
+                    saveGame();
+                    rollButton.disabled = false;
+                    relicNameDisplay.classList.remove('rolling-text');
+                }
+            }, tickInterval);
+        }
+
+        function addToInventory(relic) {
+            inventory.push(relic);
+            updateInventoryDisplay();
+        }
+
+        function updateInventoryDisplay() {
+            if (inventory.length === 0) {
+                inventoryList.innerHTML = '<p style="text-align:center; color: #999;">Your collection is empty. Start rolling!</p>';
+                return;
+            }
+            inventoryList.innerHTML = ''; // Clear current list
+
+            // Sort by rarity (higher rarity first), then by name
+            const rarityOrder = ["Cosmic", "Mythical", "Legendary", "Epic", "Rare", "Uncommon", "Common"];
+            const sortedInventory = [...inventory].sort((a, b) => {
+                const rarityA = rarityOrder.indexOf(a.rarity);
+                const rarityB = rarityOrder.indexOf(b.rarity);
+                if (rarityA !== rarityB) return rarityA - rarityB;
+                return a.name.localeCompare(b.name);
+            });
+
+
+            sortedInventory.forEach(relic => {
+                const itemDiv = document.createElement('div');
+                itemDiv.classList.add('inventory-item');
+                itemDiv.style.borderLeftColor = relic.rarity === "Cosmic" ? "#FFD700" : relic.color; // Gold for cosmic border
+
+                const iconSpan = document.createElement('span');
+                iconSpan.classList.add('inventory-item-icon');
+                iconSpan.textContent = relic.icon;
+
+                const nameSpan = document.createElement('span');
+                nameSpan.classList.add('inventory-item-name');
+                nameSpan.textContent = relic.name;
+
+                const raritySpan = document.createElement('span');
+                raritySpan.classList.add('inventory-item-rarity', relic.rarity);
+                raritySpan.textContent = relic.rarity;
+
+                itemDiv.appendChild(iconSpan);
+                itemDiv.appendChild(nameSpan);
+                itemDiv.appendChild(raritySpan);
+                inventoryList.appendChild(itemDiv);
+            });
+        }
+        
+        function updateTotalRollsDisplay() {
+            totalRollsDisplay.textContent = `Total Rolls: ${totalRolls}`;
+        }
+
+        // --- Persistence (localStorage) ---
+        function saveGame() {
+            localStorage.setItem('astralRelicInventory', JSON.stringify(inventory));
+            localStorage.setItem('astralRelicTotalRolls', totalRolls.toString());
+        }
+
+        function loadGame() {
+            const savedInventory = localStorage.getItem('astralRelicInventory');
+            const savedRolls = localStorage.getItem('astralRelicTotalRolls');
+            if (savedInventory) {
+                inventory = JSON.parse(savedInventory);
+            }
+            if (savedRolls) {
+                totalRolls = parseInt(savedRolls, 10) || 0;
+            }
+            updateInventoryDisplay();
+            updateTotalRollsDisplay();
+        }
+
+        // --- Initialize ---
+        rollButton.addEventListener('click', handleRoll);
+        
+        loadGame();
+        resizeParticleCanvas(); // Initial size
+        particleLoop(); // Start particle animation loop
+
+        // Display a default message or a random common item initially
+        displayRolledItem({ name: "Roll to find out!", rarity: "Unknown", icon: "❓" }, true);
+        relicRarityDisplay.textContent = ""; // Clear rarity for initial state
+
+    </script>
+</body>
+</html>
